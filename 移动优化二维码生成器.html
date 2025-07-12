@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>移动优化二维码生成器</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #3498db;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --light: #f8f9fa;
+            --dark: #343a40;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f0f6fc 0%, #e0edfa 100%);
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* iPhone 13 Pro Max专用顶部安全区 */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            body {
+                padding-top: calc(env(safe-area-inset-top) + 20px);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
+        
+        .container {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 18px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            max-width: 428px;
+            width: 100%;
+            margin: 0 auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, #2a80b9 100%);
+            color: white;
+            padding: 22px 0;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 3px;
+        }
+        
+        h1 {
+            margin: 0;
+            font-weight: 600;
+            font-size: 24px;
+            letter-spacing: -0.5px;
+        }
+        
+        .card {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .input-group {
+            margin-bottom: 18px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 15px;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #e0e0e6;
+            border-radius: 14px;
+            font-size: 16px;
+            background: var(--light);
+            resize: none;
+            min-height: 100px;
+            font-family: inherit;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+        }
+        
+        .toggle-btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: transparent;
+            border: none;
+            color: var(--primary);
+            font-size: 14px;
+            margin: 8px 0 16px;
+            padding: 8px;
+            font-weight: 500;
+        }
+        
+        .advanced-settings {
+            display: none;
+            border-radius: 14px;
+            background: rgba(240, 247, 255, 0.7);
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+        
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .setting-item > label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .setting-item input, .setting-item select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e0e0e6;
+            border-radius: 12px;
+            background: white;
+            font-size: 15px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: auto;
+            padding-top: 10px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 16px;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn:active {
+            transform: scale(0.97);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 14px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 14px rgba(39, 174, 96, 0.3);
+            display: none;
+        }
+        
+        #qrcodeContainer {
+            margin: 20px 0;
+            text-align: center;
+            min-height: 250px;
+            border-radius: 18px;
+            background: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s ease;
+        }
+        
+        #qrcodeCanvas {
+            max-width: 100%;
+            max-height: 240px;
+            display: none;
+        }
+        
+        .status-text {
+            color: #a0a5b0;
+            font-size: 17px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .error-text {
+            color: var(--danger);
+            font-size: 15px;
+            padding: 10px;
+            text-align: center;
+            display: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            color: var(--primary);
+            padding: 25px 0;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3.5px solid rgba(52, 152, 219, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            margin: 10px auto;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        footer {
+            text-align: center;
+            color: #a0a5b0;
+            font-size: 13px;
+            padding: 22px 0 10px;
+            font-weight: 400;
+        }
+        
+        /* iPhone 13 Pro Max设备特征优化 */
+        @media only screen and (min-height: 844px) {
+            #qrcodeContainer {
+                min-height: 280px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>二维码生成器</h1>
+        </div>
+        
+        <div class="card">
+            <div class="input-group">
+                <label for="content">输入内容：</label>
+                <textarea id="content" placeholder="请输入网址或文本..." autocomplete="off">https://example.com</textarea>
+            </div>
+            
+            <button id="toggleSettings" class="toggle-btn">显示高级选项</button>
+            
+            <div class="advanced-settings" id="advancedSettings">
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label for="size">二维码尺寸</label>
+                        <input type="number" id="size" min="100" max="1000" value="300">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="fgColor">前景颜色</label>
+                        <input type="color" id="fgColor" value="#000000">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="bgColor">背景颜色</label>
+                        <input type="color" id="bgColor" value="#FFFFFF">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="correctionLevel">容错级别</label>
+                        <select id="correctionLevel">
+                            <option value="L">L (低)</option>
+                            <option value="M">M (中)</option>
+                            <option value="Q">Q (高)</option>
+                            <option value="H">H (最高)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button id="generateBtn" class="btn btn-primary">生成二维码</button>
+                <button id="downloadBtn" class="btn btn-success">下载二维码</button>
+            </div>
+            
+            <div id="qrcodeContainer">
+                <canvas id="qrcodeCanvas"></canvas>
+                <div id="statusText" class="status-text">输入内容后点击"生成二维码"按钮</div>
+                <div id="errorText" class="error-text"></div>
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div>正在生成中...</div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            移动优化版 © 2025 | 基于QRCode.js构建
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM元素引用
+            const generateBtn = document.getElementById('generateBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const toggleSettingsBtn = document.getElementById('toggleSettings');
+            const advancedSettings = document.getElementById('advancedSettings');
+            const canvas = document.getElementById('qrcodeCanvas');
+            const contentInput = document.getElementById('content');
+            const sizeInput = document.getElementById('size');
+            const fgColorInput = document.getElementById('fgColor');
+            const bgColorInput = document.getElementById('bgColor');
+            const correctionInput = document.getElementById('correctionLevel');
+            const statusText = document.getElementById('statusText');
+            const errorText = document.getElementById('errorText');
+            const loadingIndicator = document.getElementById('loading');
+            
+            // 设置状态变量
+            let settingsVisible = false;
+            let qrCodeGenerated = false;
+            
+            // 事件监听器设置
+            generateBtn.addEventListener('click', generateQRCode);
+            downloadBtn.addEventListener('click', downloadQRCode);
+            toggleSettingsBtn.addEventListener('click', toggleAdvancedSettings);
+            contentInput.addEventListener('focus', clearError);
+            
+            // 页面加载时聚焦输入框
+            setTimeout(() => contentInput.focus(), 300);
+            
+            // 自动生成默认二维码
+            setTimeout(generateQRCode, 800);
+            
+            // 高级设置切换功能
+            function toggleAdvancedSettings() {
+                settingsVisible = !settingsVisible;
+                advancedSettings.style.display = settingsVisible ? 'block' : 'none';
+                toggleSettingsBtn.textContent = settingsVisible ? '隐藏高级选项' : '显示高级选项';
+            }
+            
+            // 清除错误消息
+            function clearError() {
+                errorText.style.display = 'none';
+                errorText.textContent = '';
+            }
+            
+            // 生成二维码函数
+            async function generateQRCode() {
+                const content = contentInput.value.trim();
+                
+                // 清除错误提示
+                clearError();
+                downloadBtn.style.display = 'none';
+                canvas.style.display = 'none';
+                statusText.style.display = 'block';
+                
+                // 输入验证
+                if (!content) {
+                    showError('请输入内容');
+                    return;
+                }
+                
+                if (content.length > 1000) {
+                    showError('内容过长，限制1000字符');
+                    return;
+                }
+                
+                try {
+                    // 显示加载状态
+                    loadingIndicator.style.display = 'block';
+                    statusText.style.display = 'none';
+                    errorText.style.display = 'none';
+                    
+                    // 获取配置参数
+                    const size = parseInt(sizeInput.value) || 300;
+                    const darkColor = fgColorInput.value;
+                    const lightColor = bgColorInput.value;
+                    const errorCorrectionLevel = correctionInput.value;
+                    
+                    // 设置Canvas尺寸
+                    canvas.width = size;
+                    canvas.height = size;
+                    
+                    // 异步生成二维码
+                    await QRCode.toCanvas(canvas, content, {
+                        width: size,
+                        margin: 1,
+                        color: {
+                            dark: darkColor,
+                            light: lightColor
+                        },
+                        errorCorrectionLevel: errorCorrectionLevel
+                    });
+                    
+                    // 更新UI状态
+                    canvas.style.display = 'block';
+                    statusText.style.display = 'block';
+                    statusText.textContent = '二维码生成成功';
+                    statusText.style.color = '#27ae60';
+                    statusText.style.fontWeight = '500';
+                    downloadBtn.style.display = 'block';
+                    qrCodeGenerated = true;
+                    
+                } catch (error) {
+                    console.error('生成失败:', error);
+                    showError('生成失败: ' + (error.message || '未知错误'));
+                } finally {
+                    loadingIndicator.style.display = 'none';
+                }
+            }
+            
+            // 下载二维码功能
+            function downloadQRCode() {
+                if (!qrCodeGenerated) {
+                    showError('请先生成二维码');
+                    return;
+                }
+                
+                try {
+                    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                    const fileName = `二维码_${timestamp}.png`;
+                    
+                    // 创建下载链接
+                    const link = document.createElement('a');
+                    link.href = canvas.toDataURL('image/png');
+                    link.download = fileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    // 下载成功提示
+                    statusText.textContent = '下载成功';
+                    statusText.style.color = '#219653';
+                    setTimeout(() => {
+                        statusText.textContent = '二维码生成成功';
+                        statusText.style.color = '#27ae60';
+                    }, 1500);
+                    
+                } catch (error) {
+                    console.error('下载失败:', error);
+                    showError('下载失败: ' + (error.message || '未知错误'));
+                }
+            }
+            
+            // 错误显示函数
+            function showError(message) {
+                errorText.textContent = message;
+                errorText.style.display = 'block';
+                statusText.textContent = '二维码生成失败';
+                statusText.style.color = '#e74c3c';
+                statusText.style.fontWeight = '500';
+            }
+        });
+    </script>
+</body>
+</html>
